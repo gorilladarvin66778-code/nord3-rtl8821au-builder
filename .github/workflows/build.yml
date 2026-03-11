@@ -17,23 +17,26 @@ jobs:
         sudo apt update
         sudo apt install -y git bc build-essential flex bison libssl-dev gcc-aarch64-linux-gnu
 
-    - name: Clone kernel modules
+    - name: Clone Nord3 Kernel Source
       run: |
-        git clone https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983.git
-
-    - name: Enter folder
-      run: |
-        cd android_kernel_modules_oneplus_mt6983
+        git clone https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983.git
+        cd android_kernel_5.10_oneplus_mt6983
         git checkout oneplus/mt6983_t_13.0_oneplus_ace_2v
+
+    - name: Prepare kernel headers
+      run: |
+        cd android_kernel_5.10_oneplus_mt6983
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- prepare modules_prepare
 
     - name: Clone driver
       run: |
         git clone https://github.com/aircrack-ng/rtl8812au.git
 
-    - name: Build driver
+    - name: Build module
       run: |
         cd rtl8812au
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j4
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- KSRC=../android_kernel_5.10_oneplus_mt6983
 
     - name: Upload module
       uses: actions/upload-artifact@v4
