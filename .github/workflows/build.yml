@@ -1,4 +1,4 @@
-name: Nord3 RTL8821AU Build
+name: Nord3 RTL8821AU Builder
 
 on:
   workflow_dispatch:
@@ -15,68 +15,76 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git bc bison build-essential flex libssl-dev libelf-dev wget clang lld llvm
+          sudo apt install -y \
+          git bc bison build-essential flex \
+          libssl-dev libelf-dev wget \
+          clang lld llvm
 
-      - name: Clone Nord3 Kernel Source
+      - name: Clone Nord3 kernel source
         run: |
-          git clone --depth=1 https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 -b oneplus/mt6983_v_15.0.0_nord_3 kernel
+          git clone --depth=1 \
+          https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
+          -b oneplus/mt6983_v_15.0.0_nord_3 kernel
 
-      - name: Clone Nord3 Kernel Modules
+      - name: Clone Nord3 kernel modules
         run: |
-          git clone --depth=1 https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 -b oneplus/mt6983_v_15.0.0_nord_3 modules
+          git clone --depth=1 \
+          https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
+          -b oneplus/mt6983_v_15.0.0_nord_3 modules
 
-      - name: Merge Vendor Modules
+      - name: Merge vendor modules
         run: |
           cp -r modules/* kernel/ || true
 
-          # create missing scheduler config paths
-          mkdir -p kernel/oplus_cpu_sched
-          echo "config OPLUS_CPU_SCHED" > kernel/oplus_cpu_sched/Kconfig
-
-          mkdir -p kernel/kernel/oplus_cpu_sched
-          echo "config OPLUS_CPU_SCHED" > kernel/kernel/oplus_cpu_sched/Kconfig
-
-      - name: Copy Nord3 Configuration
+      - name: Copy Nord3 configuration
         run: |
           cp config/nord3_defconfig kernel/.config
 
-      - name: Prepare Kernel Configuration
+      - name: Prepare kernel configuration
         run: |
           cd kernel
+
+          # FIX missing OnePlus scheduler path
+          mkdir -p kernel/oplus_cpu_sched
+          echo "config OPLUS_CPU_SCHED" > kernel/oplus_cpu_sched/Kconfig
+
+          mkdir -p oplus_cpu_sched
+          echo "config OPLUS_CPU_SCHED" > oplus_cpu_sched/Kconfig
+
+          # run kernel config
           make ARCH=arm64 LLVM=1 olddefconfig
           make ARCH=arm64 LLVM=1 prepare
           make ARCH=arm64 LLVM=1 modules_prepare
 
-      - name: Clone RTL8821AU Driver
+      - name: Clone RTL8821AU driver
         run: |
-          git clone --depth=1 https://github.com/morrownr/8821au-20210708 driver
+          git clone --depth=1 \
+          https://github.com/morrownr/8821au-20210708 driver
 
-      - name: Patch Driver for ARM64
+      - name: Patch driver for ARM64
         run: |
           cd driver
-          sed -i 's/^CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
-          sed -i 's/^CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
-          sed -i 's/^USER_EXTRA_CFLAGS += -Werror/# USER_EXTRA_CFLAGS += -Werror/' Makefile || true
 
-      - name: Show Driver Files
+          sed -i 's/CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
+          sed -i 's/CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
+          sed -i 's/USER_EXTRA_CFLAGS += -Werror/# USER_EXTRA_CFLAGS += -Werror/' Makefile || true
+
+      - name: Show driver files
         run: |
           ls -la driver
-          find driver -maxdepth 2 -type f | sort
+          find driver -name "*.c" | head
 
-      - name: Build RTL8821AU Module
+      - name: Build RTL8821AU module
         run: |
           cd driver
           make ARCH=arm64 LLVM=1 -C ../kernel M=$(pwd) modules
 
-      - name: Locate Built Modules
+      - name: Locate built modules
         run: |
-          echo "Searching for built .ko files"
-          find driver -type f -name "*.ko" | sort
+          find driver -name "*.ko"
 
-      - name: Upload Module Artifact
+      - name: Upload module artifact
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-module
-          path: |
-            driver/*.ko
-            driver/**/*.ko
+          path: driver/**/*.ko
