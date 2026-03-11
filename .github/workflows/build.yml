@@ -27,6 +27,8 @@ jobs:
       - name: Merge vendor modules
         run: |
           cp -r modules/* kernel/
+          mkdir -p kernel/oplus_cpu_sched
+          cp -r modules/oplus/* kernel/oplus_cpu_sched || true
 
       - name: Copy Nord3 config
         run: |
