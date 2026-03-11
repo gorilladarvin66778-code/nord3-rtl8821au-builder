@@ -1,0 +1,42 @@
+name: Nord3 RTL8821AU Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git bc build-essential flex bison libssl-dev gcc-aarch64-linux-gnu
+
+    - name: Clone kernel modules
+      run: |
+        git clone https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983.git
+
+    - name: Enter folder
+      run: |
+        cd android_kernel_modules_oneplus_mt6983
+        git checkout oneplus/mt6983_t_13.0_oneplus_ace_2v
+
+    - name: Clone driver
+      run: |
+        git clone https://github.com/aircrack-ng/rtl8812au.git
+
+    - name: Build driver
+      run: |
+        cd rtl8812au
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j4
+
+    - name: Upload module
+      uses: actions/upload-artifact@v4
+      with:
+        name: rtl8821au-module
+        path: rtl8812au/*.ko
