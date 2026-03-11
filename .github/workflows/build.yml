@@ -69,4 +69,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-module
-          path
+          path: |
+            driver/*.ko
+            driver/**/*.ko
