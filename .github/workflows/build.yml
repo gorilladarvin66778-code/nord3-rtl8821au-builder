@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -16,24 +15,35 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-          git bc bison build-essential flex libssl-dev libelf-dev wget \
-          gcc-aarch64-linux-gnu
+            git bc bison build-essential flex libssl-dev libelf-dev wget \
+            gcc-aarch64-linux-gnu
 
       - name: Clone Nord3 kernel source
         run: |
           git clone --depth=1 \
-          https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
-          -b oneplus/mt6983_v_15.0.0_nord_3 kernel
+            https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
+            -b oneplus/mt6983_v_15.0.0_nord_3 kernel
 
       - name: Clone Nord3 kernel modules
         run: |
           git clone --depth=1 \
-          https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
-          -b oneplus/mt6983_v_15.0.0_nord_3 modules
+            https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
+            -b oneplus/mt6983_v_15.0.0_nord_3 modules
 
       - name: Merge vendor modules
         run: |
           cp -r modules/* kernel/
+
+      - name: Copy Nord3 config
+        run: |
+          cp config/nord3_defconfig kernel/.config
+
+      - name: Prepare kernel config
+        run: |
+          cd kernel
+          make ARCH=arm64 LLVM=1 olddefconfig
+          make ARCH=arm64 LLVM=1 prepare
+          make ARCH=arm64 LLVM=1 modules_prepare
 
       - name: Clone RTL8821AU driver
         run: |
@@ -46,29 +56,21 @@ jobs:
           sed -i 's/^CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
           sed -i 's/^USER_EXTRA_CFLAGS += -Werror/# USER_EXTRA_CFLAGS += -Werror/' Makefile || true
 
-      - name: Prepare kernel config
-        run: |
-          cd kernel
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig || true
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig || true
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- prepare || true
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare || true
-
       - name: Show driver files
         run: |
           ls -la driver
-          find driver -maxdepth 2 -type f
+          find driver -maxdepth 2 -type f | sort
 
       - name: Build RTL8821AU module
         run: |
           cd driver
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+          make ARCH=arm64 LLVM=1 \
           -C ../kernel M=$(pwd) modules
 
       - name: Find built modules
         run: |
           echo "Searching for built .ko files"
-          find driver -type f -name "*.ko"
+          find driver -type f -name "*.ko" | sort
 
       - name: Upload module artifact
         uses: actions/upload-artifact@v4
