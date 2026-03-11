@@ -43,8 +43,9 @@ jobs:
         run: |
           cd kernel
 
-          # Remove broken OnePlus vendor Kconfig references
-          sed -i '/oplus/d' init/Kconfig
+          # Remove broken Oplus vendor Kconfig source lines from all Kconfig files
+          find . -type f \( -name 'Kconfig' -o -name 'Kconfig.*' \) -print0 | \
+          xargs -0 sed -i '/source ".*oplus.*Kconfig"/d'
 
           make ARCH=arm64 LLVM=1 olddefconfig
           make ARCH=arm64 LLVM=1 prepare
