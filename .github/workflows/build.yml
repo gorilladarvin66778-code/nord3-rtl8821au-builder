@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -15,20 +16,20 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            git bc bison build-essential flex libssl-dev libelf-dev wget \
-            gcc-aarch64-linux-gnu make
+          git bc bison build-essential flex libssl-dev libelf-dev wget \
+          gcc-aarch64-linux-gnu
 
       - name: Clone Nord3 kernel source
         run: |
           git clone --depth=1 \
-            https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
-            -b oneplus/mt6983_v_15.0.0_nord_3 kernel
+          https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
+          -b oneplus/mt6983_v_15.0.0_nord_3 kernel
 
       - name: Clone Nord3 kernel modules
         run: |
           git clone --depth=1 \
-            https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
-            -b oneplus/mt6983_v_15.0.0_nord_3 modules
+          https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
+          -b oneplus/mt6983_v_15.0.0_nord_3 modules
 
       - name: Merge vendor modules
         run: |
@@ -48,17 +49,18 @@ jobs:
       - name: Show driver files
         run: |
           ls -la driver
-          find driver -maxdepth 2 -type f | sort
+          find driver -maxdepth 2 -type f
 
       - name: Build RTL8821AU module
         run: |
           cd driver
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+          -C ../kernel M=$(pwd) modules
 
       - name: Find built modules
         run: |
-          echo "Searching for .ko files..."
-          find driver -type f -name "*.ko" | sort
+          echo "Searching for built .ko files"
+          find driver -type f -name "*.ko"
 
       - name: Upload module artifact
         uses: actions/upload-artifact@v4
