@@ -32,10 +32,10 @@ jobs:
         rsync -av modules/vendor/ kernel/vendor/
 
     - name: Prepare kernel headers
-      run: |
-        cd kernel
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
+  run: |
+    cd kernel
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- scripts
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
 
     - name: Clone driver
       run: |
