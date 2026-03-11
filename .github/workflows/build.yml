@@ -38,6 +38,7 @@ jobs:
       - name: Prepare kernel headers
         run: |
           cd kernel
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- scripts
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
 
@@ -57,16 +58,8 @@ jobs:
           cd rtl8812au
           make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- KSRC=../kernel
 
-      - name: List output files
-        if: always()
-        run: |
-          find rtl8812au -type f | sort
-
       - name: Upload module
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-module
-          path: |
-            rtl8812au/*.ko
-            rtl8812au/**/*.ko
+          path: rtl8812au/*.ko
