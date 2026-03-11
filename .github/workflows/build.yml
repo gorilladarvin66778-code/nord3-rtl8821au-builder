@@ -44,14 +44,9 @@ jobs:
         run: |
           cd kernel
 
-          # FIX missing OnePlus scheduler path
-          mkdir -p kernel/oplus_cpu_sched
-          echo "config OPLUS_CPU_SCHED" > kernel/oplus_cpu_sched/Kconfig
+          # FIX broken OnePlus scheduler reference
+          sed -i '/oplus_cpu_sched/d' init/Kconfig
 
-          mkdir -p oplus_cpu_sched
-          echo "config OPLUS_CPU_SCHED" > oplus_cpu_sched/Kconfig
-
-          # run kernel config
           make ARCH=arm64 LLVM=1 olddefconfig
           make ARCH=arm64 LLVM=1 prepare
           make ARCH=arm64 LLVM=1 modules_prepare
