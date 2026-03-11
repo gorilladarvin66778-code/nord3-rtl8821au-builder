@@ -8,46 +8,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git bc build-essential flex bison libssl-dev \
+            gcc-aarch64-linux-gnu rsync make
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y git bc build-essential flex bison libssl-dev gcc-aarch64-linux-gnu rsync
+      - name: Clone kernel source
+        run: |
+          git clone https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983.git kernel
+          cd kernel
+          git checkout oneplus/mt6983_t_13.0_oneplus_ace_2v
 
-    - name: Clone kernel source
-      run: |
-        git clone https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983.git kernel
-        cd kernel
-        git checkout oneplus/mt6983_t_13.0_oneplus_ace_2v
+      - name: Clone kernel modules
+        run: |
+          git clone https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983.git modules
+          cd modules
+          git checkout oneplus/mt6983_t_13.0_oneplus_ace_2v
 
-    - name: Clone kernel modules
-      run: |
-        git clone https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983.git modules
+      - name: Merge vendor modules
+        run: |
+          mkdir -p kernel/vendor
+          rsync -av modules/vendor/ kernel/vendor/
 
-    - name: Merge vendor modules
-      run: |
-        rsync -av modules/vendor/ kernel/vendor/
+      - name: Prepare kernel headers
+        run: |
+          cd kernel
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- scripts
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
 
-    - name: Prepare kernel headers
-  run: |
-    cd kernel
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- scripts
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- modules_prepare
+      - name: Clone driver
+        run: |
+          git clone https://github.com/aircrack-ng/rtl8812au.git rtl8812au
 
-    - name: Clone driver
-      run: |
-        git clone https://github.com/aircrack-ng/rtl8812au.git
+      - name: Patch driver Makefile
+        run: |
+          cd rtl8812au
+          sed -i 's/^CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
+          sed -i 's/^CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
+          sed -i 's/^USER_EXTRA_CFLAGS += -Werror/# USER_EXTRA_CFLAGS += -Werror/' Makefile || true
 
-    - name: Build driver
-      run: |
-        cd rtl8812au
-        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- KSRC=../kernel
+      - name: Build driver
+        run: |
+          cd rtl8812au
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- KSRC=../kernel
 
-    - name: Upload module
-      uses: actions/upload-artifact@v4
-      with:
-        name: rtl8821au-module
-        path: rtl8812au/*.ko
+      - name: List output files
+        if: always()
+        run: |
+          find rtl8812au -type f | sort
+
+      - name: Upload module
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8821au-module
+          path: |
+            rtl8812au/*.ko
+            rtl8812au/**/*.ko
