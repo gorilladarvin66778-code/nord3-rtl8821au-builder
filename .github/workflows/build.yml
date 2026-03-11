@@ -14,21 +14,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y \
-            git bc bison build-essential flex libssl-dev libelf-dev wget \
-            gcc-aarch64-linux-gnu
+          sudo apt install -y git bc bison build-essential flex libssl-dev libelf-dev wget clang lld llvm
 
       - name: Clone Nord3 kernel source
         run: |
-          git clone --depth=1 \
-            https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 \
-            -b oneplus/mt6983_v_15.0.0_nord_3 kernel
+          git clone --depth=1 https://github.com/OnePlusOSS/android_kernel_5.10_oneplus_mt6983 -b oneplus/mt6983_v_15.0.0_nord_3 kernel
 
       - name: Clone Nord3 kernel modules
         run: |
-          git clone --depth=1 \
-            https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 \
-            -b oneplus/mt6983_v_15.0.0_nord_3 modules
+          git clone --depth=1 https://github.com/OnePlusOSS/android_kernel_modules_oneplus_mt6983 -b oneplus/mt6983_v_15.0.0_nord_3 modules
 
       - name: Merge vendor modules
         run: |
@@ -64,8 +58,7 @@ jobs:
       - name: Build RTL8821AU module
         run: |
           cd driver
-          make ARCH=arm64 LLVM=1 \
-          -C ../kernel M=$(pwd) modules
+          make ARCH=arm64 LLVM=1 -C ../kernel M=$(pwd) modules
 
       - name: Find built modules
         run: |
@@ -76,6 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-module
-          path: |
-            driver/*.ko
-            driver/**/*.ko
+          path
