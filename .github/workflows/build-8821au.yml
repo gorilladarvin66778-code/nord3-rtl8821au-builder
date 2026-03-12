@@ -8,23 +8,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y \
-            git \
-            bc \
-            build-essential \
-            flex \
-            bison \
-            libssl-dev \
-            libelf-dev \
-            clang \
-            llvm \
-            lld \
-            gcc-aarch64-linux-gnu
+          git bc build-essential flex bison \
+          libssl-dev libelf-dev \
+          clang llvm lld \
+          gcc-aarch64-linux-gnu
 
-      - name: Clone driver source
+      - name: Clone driver
         run: |
           git clone --depth=1 https://github.com/morrownr/8821au-20210708.git driver
 
@@ -32,7 +26,7 @@ jobs:
         run: |
           git clone --depth=1 --branch v5.10 https://github.com/torvalds/linux.git kernel
 
-      - name: Prepare kernel tree
+      - name: Prepare kernel
         run: |
           cd kernel
           export ARCH=arm64
@@ -41,42 +35,45 @@ jobs:
           export LLVM=1
           export LLVM_IAS=1
           export CROSS_COMPILE=aarch64-linux-gnu-
-          export HOSTCC=clang
-          export HOSTCXX=clang++
           make defconfig
           make modules_prepare
 
-      - name: Patch USB ID for TP-Link 2357:0120
+      - name: Patch USB ID
         run: |
-          if ! grep -q "0x2357, 0x0120" driver/os_dep/linux/usb_intf.c; then
-            sed -i '/0x2357, 0x011e/a \    {USB_DEVICE(0x2357, 0x0120), .driver_info = RTL8821},' driver/os_dep/linux/usb_intf.c
-          fi
+          sed -i '/0x2357, 0x011e/a \    {USB_DEVICE(0x2357, 0x0120), .driver_info = RTL8821},' driver/os_dep/linux/usb_intf.c || true
 
-      - name: Configure driver for Android ARM64
+      - name: Configure driver
         run: |
           cd driver
-          sed -i 's/^CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
-          sed -i 's/^CONFIG_PLATFORM_ARM_RPI = y/CONFIG_PLATFORM_ARM_RPI = n/' Makefile || true
-          sed -i 's/^CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
-          sed -i 's/^USER_EXTRA_CFLAGS += -Werror/# USER_EXTRA_CFLAGS += -Werror/' Makefile || true
+          sed -i 's/CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
+          sed -i 's/CONFIG_PLATFORM_ARM_RPI = y/CONFIG_PLATFORM_ARM_RPI = n/' Makefile || true
+          sed -i 's/CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
 
       - name: Build RTL8821AU module
         run: |
           cd driver
           export ARCH=arm64
+          export CC=clang
+          export LD=ld.lld
+          export LLVM=1
+          export LLVM_IAS=1
           export CROSS_COMPILE=aarch64-linux-gnu-
-          make KSRC=../kernel \
-            CONFIG_PLATFORM_I386_PC=n \
-            CONFIG_PLATFORM_ANDROID_ARM64=y
 
-      - name: Show built files
+          make ARCH=arm64 \
+          CC=clang \
+          LD=ld.lld \
+          LLVM=1 \
+          LLVM_IAS=1 \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          KSRC=../kernel \
+          CONFIG_PLATFORM_I386_PC=n \
+          CONFIG_PLATFORM_ANDROID_ARM64=y
+
+      - name: Show built modules
         run: |
-          echo "=== KO files ==="
-          find . -type f -name "*.ko" | sort || true
-          echo "=== Driver dir ==="
-          find driver -maxdepth 2 -type f | sort | tail -100 || true
+          find . -name "*.ko" || true
 
-      - name: Upload module artifact
+      - name: Upload module
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-driver
