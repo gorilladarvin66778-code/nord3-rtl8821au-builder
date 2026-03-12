@@ -17,11 +17,11 @@ jobs:
         run: |
           git clone https://github.com/morrownr/8821au-20210708.git driver
 
-      - name: Download Android Kernel Source (5.10 base)
+      - name: Download Linux Kernel Source (5.10 base)
         run: |
-          git clone --depth=1 https://github.com/torvalds/linux.git kernel
-          cd kernel
-          git checkout v5.10
+         git clone https://github.com/torvalds/linux.git kernel
+         cd kernel
+         git checkout v5.10
 
       - name: Prepare kernel tree
         run: |
