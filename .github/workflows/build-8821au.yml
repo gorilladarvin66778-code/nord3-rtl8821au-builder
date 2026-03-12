@@ -1,0 +1,47 @@
+name: Build RTL8821AU Module (Android ARM64)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git build-essential bc flex bison libssl-dev gcc-aarch64-linux-gnu
+
+      - name: Clone driver source
+        run: |
+          git clone https://github.com/morrownr/8821au-20210708.git driver
+
+      - name: Download Android Kernel Source (5.10 base)
+        run: |
+          git clone --depth=1 https://github.com/torvalds/linux.git kernel
+          cd kernel
+          git checkout v5.10
+
+      - name: Prepare kernel tree
+        run: |
+          cd kernel
+          make ARCH=arm64 defconfig
+          make ARCH=arm64 modules_prepare
+
+      - name: Patch USB ID for TP-Link 2357:0120
+        run: |
+          sed -i '/0x2357, 0x011e/a \{USB_DEVICE(0x2357, 0x0120), .driver_info = RTL8821},' driver/os_dep/linux/usb_intf.c
+
+      - name: Build module
+        run: |
+          cd driver
+          export ARCH=arm64
+          export CROSS_COMPILE=aarch64-linux-gnu-
+          make KSRC=../kernel CONFIG_PLATFORM_ANDROID_ARM64=y
+
+      - name: Upload module
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtl8821au-module
+          path: driver/*.ko
