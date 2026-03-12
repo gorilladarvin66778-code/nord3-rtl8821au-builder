@@ -1,4 +1,4 @@
-name: Build RTL8821AU Module (Android ARM64)
+name: Build RTL8821AU Android Module
 
 on:
   workflow_dispatch:
@@ -8,31 +8,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y \
-            git \
-            bc \
-            build-essential \
-            flex \
-            bison \
-            libssl-dev \
-            libelf-dev \
-            clang \
-            llvm \
-            lld \
-            gcc-aarch64-linux-gnu
+          git bc build-essential flex bison \
+          libssl-dev libelf-dev \
+          clang llvm lld \
+          gcc-aarch64-linux-gnu
 
       - name: Clone driver
         run: |
           git clone --depth=1 https://github.com/morrownr/8821au-20210708.git driver
 
-      - name: Download Linux kernel source
+      - name: Download kernel source
         run: |
           git clone --depth=1 --branch v5.10 https://github.com/torvalds/linux.git kernel
 
-      - name: Prepare kernel headers
+      - name: Prepare kernel
         run: |
           cd kernel
           export ARCH=arm64
@@ -44,18 +38,18 @@ jobs:
           make defconfig
           make modules_prepare
 
-      - name: Patch USB ID (TP-Link 2357:0120)
+      - name: Patch USB ID
         run: |
           sed -i '/0x2357, 0x011e/a \    {USB_DEVICE(0x2357, 0x0120), .driver_info = RTL8821},' driver/os_dep/linux/usb_intf.c || true
 
-      - name: Configure driver for Android ARM64
+      - name: Force Android ARM64 mode
         run: |
           cd driver
           sed -i 's/CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/' Makefile || true
           sed -i 's/CONFIG_PLATFORM_ARM_RPI = y/CONFIG_PLATFORM_ARM_RPI = n/' Makefile || true
           sed -i 's/CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/' Makefile || true
 
-      - name: Build RTL8821AU module
+      - name: Build module
         run: |
           export ARCH=arm64
           export CC=clang
@@ -65,7 +59,7 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-gnu-
 
           make -C kernel \
-          M=$GITHUB_WORKSPACE/driver \
+          M=$(pwd)/driver \
           ARCH=arm64 \
           CC=clang \
           LD=ld.lld \
@@ -74,14 +68,13 @@ jobs:
           CROSS_COMPILE=aarch64-linux-gnu- \
           modules
 
-      - name: Show built modules
+      - name: Show modules
         run: |
-          find driver -name "*.ko"
+          find . -name "*.ko"
 
       - name: Upload module
         uses: actions/upload-artifact@v4
         with:
           name: rtl8821au-driver
           path: |
-            driver/*.ko
-            driver/**/*.ko
+            **/*.ko
